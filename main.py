@@ -1,29 +1,21 @@
 # Access point for translating braille to text and vice verse.
-import printer, alphaToBraille, brailleToAlpha
+import printer
+import alphaToBraille
+import brailleToAlpha
 from sys import argv
+from flask import Flask, jsonify, request
 
 
-def menu():
-    print('''
-    Usage:
-        main.py <parameter>
-        main.py <file name> <parameter>
-    Parameters:
-        --braille | -b      translate braille to text
-        --text    | -t      translate text to braille
-        --help    | -h      display this screen
-        --map     | -m      print translation map
-    ''')
+def user_braille(data):
+    res = brailleToAlpha.translate(data)
+    print(res)
+    return res
 
 
-def user_braille():
-    print("Input Braille: ", end="")
-    print(brailleToAlpha.translate(input()))
-
-
-def user_text():
-    print("Input Text: ", end="")
-    print(alphaToBraille.translate(input()))
+def user_text(data):
+    res = alphaToBraille.translate(data)
+    print(res)
+    return res
 
 
 def open_braille(filename):
@@ -38,31 +30,23 @@ def open_text(filename):
     print(alphaToBraille.translate(content))
 
 
-def argument_handler():
-    if len(argv) == 1:
-        menu()
-    elif len(argv) == 2:
-        if argv[1] == "--braille" or argv[1] == "-b":
-            user_braille()
-        elif argv[1] == "--text" or argv[1] == "-t":
-            user_text()
-        elif argv[1] == "--map" or argv[1] == "-m":
-            printer.all_braille()
+app = Flask(__name__)
+
+
+@app.route("/brailleFromText", methods=["POST"])
+def getBrailleFromText():
+    try:
+        data = request.get_json()
+        if 'text' in data:
+            text = data['text']
+            result = user_text(text)  # Call your translation function here
+            print(result)
+            return jsonify({"result": result})
         else:
-            menu()
-    elif len(argv) == 3:
-        print(argv[0], argv[1], argv[2])
-        if argv[2] == "--braille" or argv[2] == "-b":
-            open_braille(argv[1])
-        elif argv[2] == "--text" or argv[2] == "-t":
-            open_text(argv[1])
-        elif argv[2] == "--map" or argv[2] == "-m":
-            printer.all_braille()
-        else:
-            menu()
-    else:
-        menu()
+            return jsonify({"error": "Missing 'text' field in the JSON data"}), 400
+    except Exception as e:
+        return jsonify({"error": "An error occurred: " + str(e)}), 500
 
 
 if __name__ == "__main__":
-    argument_handler()
+    app.run(debug=True)
